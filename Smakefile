@@ -1,0 +1,32 @@
+#
+# SAS/C Amiga Makefile
+# Tested on version 6.58
+# To use, from the directory containing this file:
+#   makedir build
+#   smake
+#
+#
+
+TRG= build/ipc_ctrl
+CC=	sc ResOpt NoStackCheck NoChkAbort
+RM= delete
+
+CFLAGS= Opt OptSize OptInl OptInLocal PARMS=REGISTER ObjectName=build/
+LDLAGS=	Link NoStdIO NoStartUp Batch
+
+all: build/ipc_ctrl build/ipc_srvc
+
+build/ipc_ctrl.o: src/ipc_ctrl.c
+   $(CC) $(CFLAGS) $<
+
+build/ipc_srvc.o: src/ipc_srvc.c
+   $(CC) $(CFLAGS) $<
+
+build/ipc_ctrl:	build/ipc_ctrl.o
+    $(CC) $(LDLAGS) TO=$@ build/ipc_ctrl.o
+
+build/ipc_srvc:	build/ipc_srvc.o
+    $(CC) $(LDLAGS) TO=$@ build/ipc_srvc.o
+
+clean:
+    -$(RM) build/\#?
