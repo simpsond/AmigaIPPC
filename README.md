@@ -12,7 +12,7 @@ passing system. This is particularly useful in situations where a single request
 To build, you can use CMake and the supplied toolchain config. From this project's root directory just
 ```
 mkdir cmake-build
-cmake -B cmake-build -DCMAKE_TOOLCHAIN_FILE=AmigaCMakeCrossToolchains/m68k-amigaos.cmake
+cmake -B cmake-build -DCMAKE_TOOLCHAIN_FILE=m68k-amigaos.cmake
 cd cmake-build
 make
 ```
