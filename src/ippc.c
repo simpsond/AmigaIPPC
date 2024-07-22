@@ -136,18 +136,6 @@ void RPCGetCommand(struct MsgPort* port, void(*OnCommand)(struct IPPCRequest*, v
   }
 }
 
-//void CopyRPCRequest(struct IPPCRequest* src, struct IPPCRequest* dst) {
-//  ULONG command_name_sz;
-//
-//  command_name_sz = (ULONG) strlen((const char*) src->command_name) + 1;
-//  dst->payload_sz = src->payload_sz;
-//  dst->response_port = src->response_port;
-//  dst->payload = AllocMem(src->payload_sz, MEMF_ANY | MEMF_CLEAR);
-//  CopyMem(src->payload, dst->payload, src->payload_sz);
-//  dst->command_name = AllocMem(command_name_sz, MEMF_ANY | MEMF_CLEAR);
-//  CopyMem(src->command_name, dst->command_name, command_name_sz);
-//}
-
 void FreeIPPCRequest(struct IPPCRequest* request) {
   ULONG command_name_sz;
   command_name_sz = (ULONG) strlen((const char*) request->command_name) + 1;
@@ -188,7 +176,3 @@ void FreeIPPCRequest(struct IPPCRequest* request) {
 //  }
 }
 
-//void FreeRPCResponse(struct IPPCResponse* response) {
-//  FreeMem(response->data, response->length);
-//  response->length = 0;
-//}

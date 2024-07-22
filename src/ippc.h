@@ -119,8 +119,4 @@ void CallPortRPC(struct MsgPort* port, struct IPPCRequest* cmd, void(*cb)(struct
 void RPCGetCommand(struct MsgPort* port, void(*OnCommand)(struct IPPCRequest*, void(*CB)(struct IPPCRequest* request, struct IPPCResponse* response)));
 
 
-void CopyRPCRequest(struct IPPCRequest* src, struct IPPCRequest* dst);
-void FreeRPCResponse(struct IPPCResponse* response);
-void CreateCommandMessage(struct RequestMessage* msg, STRPTR command, void* data, ULONG sz);
-
 #endif //AMIGAIPCDEMO_SRC_IPPC_H_
