@@ -12,11 +12,11 @@ passing system. This is particularly useful in situations where a single request
 To build, you can use CMake and the supplied toolchain config. From this project's root directory just
 ```
 mkdir cmake-build
-cmake -B cmake-build -DCMAKE_TOOLCHAIN_FILE=AmigaCMakeCrossToolchains/m68k-amigaos.cmake -DM68K_CRT=none
+cmake -B cmake-build -DCMAKE_TOOLCHAIN_FILE=AmigaCMakeCrossToolchains/m68k-amigaos.cmake
 cd cmake-build
 make
 ```
-AmiHello will be in the cmake-build directory
+example binaries will be in the cmake-build directory
 
 ### SAS/C Amiga Compiler 6.58
 Assuming SAS/C is in your Amiga path then, from this project's root directory
@@ -24,4 +24,4 @@ Assuming SAS/C is in your Amiga path then, from this project's root directory
 makedir build
 smake
 ```
-AmiHello-sc will be in the build directory.
+example binaries will be in the build directory.
