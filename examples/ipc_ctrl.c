@@ -1,69 +1,66 @@
 //
 // Created by Dustin Simpson on 7/3/24.
 //
-#include <stdio.h>
+
 #include <proto/dos.h>
 #include <dos/dostags.h>
 #include <proto/exec.h>
+
 #include <string.h>
 
-#include "ipc.h"
 #include "ippc.h"
 
-#define COMMAND_COUNT 4
 
+#ifdef __GNUC__
 struct ExecBase* SysBase;
 struct DosLibrary* DOSBase;
-BPTR seglist;
-struct Process *proc;
-struct RDArgs *rd;
-LONG params[4];
+#endif
+
 
 const unsigned char* task_name = "ipc_srvc";
 
 struct Cmd {
   STRPTR name;
-  void(*cmd)();
+  void(*cmd)(void);
 };
 
-void StartSrvc();
-void StopSrvc();
-void SrvcStatus();
-void SrvcGetRandom();
-
+void StartSrvc(void);
+void StopSrvc(void);
+void SrvcStatus(void);
+void SrvcGetRandom(void);
 int IsSrvcRunning(struct Task** task);
 
 
+
 int main() {
-//  struct Cmd commands[COMMAND_COUNT];
-
-  Printf("=== IPC Controller ===\n");
-
-  SysBase = *(struct ExecBase**)4;
-  DOSBase = (struct DosLibrary*)OpenLibrary("dos.library", 0);
-
+  int i;
+  struct RDArgs *rd;
+  LONG params[] = {0, 0, 0, 0};
   char template[] = "CMD/A";
 
   struct Cmd commands[] = {
-      {.name = (STRPTR)"start", .cmd = StartSrvc},
-      {.name = (STRPTR)"stop", .cmd = StopSrvc},
-      {.name = (STRPTR)"status", .cmd = SrvcStatus},
-      {.name = (STRPTR)"get_random", .cmd = SrvcGetRandom},
+      {(STRPTR)"start", StartSrvc},
+      {(STRPTR)"stop", StopSrvc},
+      {(STRPTR)"status", SrvcStatus},
+      {(STRPTR)"get_random", SrvcGetRandom},
   };
+  UBYTE command_count = sizeof(commands)/sizeof(commands[0]);
 
-  for (int i=0; i < 4; i++) {
-    params[i] = 0;
-  }
+#ifdef __GNUC__
+  SysBase = *(struct ExecBase**)4;
+  DOSBase = (struct DosLibrary*)OpenLibrary("dos.library", 0);
+#endif
 
+  Printf("=== IPC Controller ===\n");
 
   rd = ReadArgs(template, params, NULL);
 
   if(!rd) {
     Printf("Format: ipc_ctrl CMD\n");
-    return;
+    return -1;
   }
 
-  for(int i = 0; i < COMMAND_COUNT; i++) {
+  for(i = 0; i < command_count; i++) {
     if(strcmp((const char*)params[0], (char*)commands[i].name) == 0) {
       commands[i].cmd();
     }
@@ -75,6 +72,9 @@ int main() {
 
 void StartSrvc() {
   struct Task* task;
+  struct Process *proc;
+  BPTR seglist;
+
   if(IsSrvcRunning(&task)) {
     Printf("service already running\n");
     return;
@@ -82,7 +82,7 @@ void StartSrvc() {
   seglist = LoadSeg("ipc_srvc");
   if(!seglist) {
     Printf("unable to load ipc service\n");
-    return 0;
+    return;
   }
 
   proc = CreateNewProcTags(NP_Seglist, seglist, NP_Name, (BPTR)task_name, TAG_END);
@@ -90,7 +90,9 @@ void StartSrvc() {
 
 void StopSrvc() {
   struct Task* task;
+  Printf("In StopSrvc\n");
   if(IsSrvcRunning(&task)) {
+    Printf("Task is running\n");
     RemTask(task);
     Printf("called RemTask on ipc_srvc\n");
   } else {
@@ -108,24 +110,31 @@ void SrvcStatus() {
 }
 
 int IsSrvcRunning(struct Task** task) {
-  *task = FindTask(task_name);
+  *task = FindTask((STRPTR)task_name);
   return *task != 0;
 }
 
 void GetRandomCB(struct CommandResponse* response) {
-  Printf("%ld\n", *(int*)response->response->data);
+  if(response->response->length) {
+    Printf("%ld\n", *(int*)response->response->data);
+  } else {
+    Printf("all done!\n");
+  }
 }
 
 void SrvcGetRandom() {
-  struct IPPCRequestMsg cmd;
+  struct IPPCRequest* request;
   struct Task* task;
 
   USHORT count_random_numbers = 2;
 
+  unsigned char command_name[] = "get_random";
+
   if(IsSrvcRunning(&task)) {
-    CreateCommandMessage(&cmd, (STRPTR) "get_random", (void*)&count_random_numbers, sizeof(USHORT));
-//    cmd.command = (STRPTR) "get_random";
-    CallTaskRPC(task, &cmd, GetRandomCB);
+    request = CreateIPPCRequest(command_name, (void*)&count_random_numbers, sizeof(USHORT));
+    Printf("going to call: CallTaskRPC\n");
+    CallTaskRPC((struct Process*)task, request, GetRandomCB);
+    FreeIPPCRequest(request);
   }
 }
 

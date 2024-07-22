@@ -1,109 +1,194 @@
-//
-// Created by Dustin Simpson on 7/6/24.
-//
+/**
+MIT License
+
+Copyright (c) 2024 Dustin Simpson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+ */
 
 #include "ippc.h"
 
 #include <proto/exec.h>
+#include <proto/dos.h>
+#include <exec/memory.h>
+
 #include <string.h>
 
+struct IPPCRequest* CreateIPPCRequest( STRPTR command, void* data, ULONG sz) {
+  struct IPPCRequest* request;
+
+  ULONG command_name_sz;
+  command_name_sz = (ULONG) strlen((const char*) command) + 1;
+
+  request = AllocMem(sizeof(struct IPPCRequest), MEMF_ANY | MEMF_CLEAR);
+
+  request->command_name = AllocMem(command_name_sz, MEMF_ANY | MEMF_CLEAR);
+  CopyMem(command, request->command_name, command_name_sz);
+
+  request->payload_sz = sz;
+  request->payload = AllocMem(sz, MEMF_ANY | MEMF_CLEAR);
+  CopyMem(data, request->payload, sz);
+
+  request->response_port = CreateMsgPort();
+
+  return request;
+}
+
+
 /**
- * @brief Essentially a convenience function to set the command name and data on an already allocated IPPCRequestMsg
+ * @brief Essentially a convenience function to set the command name and data on an already allocated RequestMessage
  * @param msg space needs to be allocated before passing into this function
  * @param command name of command, assumed this pointer will be valid through execution
  * @param data assumed this pointer will be valid through execution
  */
-void CreateCommandMessage(struct IPPCRequestMsg* msg, STRPTR command, void* data, ULONG sz) {
-  msg->request.command_name = command;
-  msg->request.payload = data;
-  msg->request.payload_sz = sz;
+void CreateCommandMessage(struct RequestMessage* msg, STRPTR command, void* data, ULONG sz) {
+  ULONG command_name_sz;
+  command_name_sz = (ULONG) strlen((const char*) command) + 1;
+
+  msg->request = AllocMem(sizeof(struct IPPCRequest), MEMF_ANY | MEMF_CLEAR);
+
+  msg->request->command_name = AllocMem(command_name_sz, MEMF_ANY | MEMF_CLEAR);
+  CopyMem(command, msg->request->command_name, command_name_sz);
+
+  msg->request->payload_sz = sz;
+  msg->request->payload = AllocMem(sz, MEMF_ANY | MEMF_CLEAR);
+  CopyMem(data, msg->request->payload, sz);
 }
 
-void CallTaskRPC(struct Task* task, struct IPPCRequestMsg* cmd, void(*cb)(struct CommandResponse* data)) {
-  struct MsgPort* response_port, *cmd_response_port;
+void CallTaskRPC(struct Process* proc, struct IPPCRequest* cmd, void(*cb)(struct CommandResponse* data)) {
+  CallPortRPC(&proc->pr_MsgPort, cmd, cb);
+}
+
+void CallPortRPC(struct MsgPort* port, struct IPPCRequest* cmd, void(*cb)(struct CommandResponse* data)) {
+  struct RequestMessage message;
   struct CommandResponse* cmd_response;
   ULONG packet_len;
 
-  cmd->msg.mn_ReplyPort = CreateMsgPort();
-  cmd->msg.mn_Length = sizeof(struct IPPCRequestMsg);
-  cmd_response_port = CreateMsgPort();
-  cmd->request.response_port = cmd_response_port;
+  message.msg.mn_ReplyPort = CreateMsgPort();
+  message.msg.mn_Length = sizeof(struct RequestMessage);
 
-  PutMsg(&((struct Process*)task)->pr_MsgPort, cmd);
-  WaitPort(cmd->msg.mn_ReplyPort);
-  GetMsg(cmd->msg.mn_ReplyPort);
-  DeleteMsgPort(cmd->msg.mn_ReplyPort);
+  message.request = cmd;
+
+  PutMsg(port, (struct Message*) &message);
+  WaitPort(message.msg.mn_ReplyPort);
+  GetMsg(message.msg.mn_ReplyPort);
+  DeleteMsgPort(message.msg.mn_ReplyPort);
 
   GetChunk:
-  WaitPort(cmd_response_port);
-  cmd_response = (struct CommandResponse*)GetMsg(cmd_response_port);
+  WaitPort(cmd->response_port);
+  cmd_response = (struct CommandResponse*)GetMsg(cmd->response_port);
   packet_len = cmd_response->response->length;
 
   if(packet_len > 0) {
     cb(cmd_response);
-    ReplyMsg(cmd_response);
+    ReplyMsg((struct Message*)cmd_response);
     goto GetChunk;
   } else {
-    ReplyMsg(cmd_response);
+    cb(cmd_response);
+    ReplyMsg((struct Message*)cmd_response);
   }
-  DeleteMsgPort(cmd_response_port);
+  DeleteMsgPort(cmd->response_port);
 }
 
 void OnCommandCB(struct IPPCRequest* request, struct IPPCResponse* response) {
   struct CommandResponse response_message;
+  #ifdef ENABLE_KPRINT
+    KPrintF("In OnCommandCB\n");
+  #endif
 
   response_message.msg.mn_ReplyPort = CreateMsgPort();
   response_message.msg.mn_Length = sizeof(struct CommandResponse);
   response_message.response = response;
-  PutMsg(request->response_port, &response_message);
+  PutMsg(request->response_port, (struct Message*)&response_message);
   WaitPort(response_message.msg.mn_ReplyPort);
   GetMsg(response_message.msg.mn_ReplyPort);
   DeleteMsgPort(response_message.msg.mn_ReplyPort);
 }
 
 void RPCGetCommand(struct MsgPort* port, void(*OnCommand)(struct IPPCRequest*, void(*CB)(struct IPPCRequest* request, struct IPPCResponse* response))) {
-  struct IPPCRequestMsg* message;
-//  struct CommandResponse response_message;
-//  struct MsgPort* cmd_response_port;
-//  struct IPPCResponse* response;
-  struct IPPCRequest request;
+  struct RequestMessage* message;
 
-  if((message = (struct IPPCRequestMsg*)GetMsg(port))) {
-    CopyRPCRequest(&(message->request), &request);
+  if((message = (struct RequestMessage*)GetMsg(port))) {
+    struct IPPCResponse response_terminator = {0, 0, NULL};
+    #ifdef ENABLE_KPRINT
+    KPrintF("Got a message\n");
+    #endif
 
-//    cmd_response_port = message->request.response_port;
-    ReplyMsg(message);
-    OnCommand(&request, OnCommandCB);
-
-//    CmdGetRandom(cmd_response_port, *(USHORT*)message->request.payload);
-    FreeRPCRequest(&request);
+    ReplyMsg((struct Message*)message);
+    OnCommand(message->request, OnCommandCB);
+    OnCommandCB(message->request, &response_terminator);
   }
-
 }
 
-void CopyRPCRequest(struct IPPCRequest* src, struct IPPCRequest* dst) {
+//void CopyRPCRequest(struct IPPCRequest* src, struct IPPCRequest* dst) {
+//  ULONG command_name_sz;
+//
+//  command_name_sz = (ULONG) strlen((const char*) src->command_name) + 1;
+//  dst->payload_sz = src->payload_sz;
+//  dst->response_port = src->response_port;
+//  dst->payload = AllocMem(src->payload_sz, MEMF_ANY | MEMF_CLEAR);
+//  CopyMem(src->payload, dst->payload, src->payload_sz);
+//  dst->command_name = AllocMem(command_name_sz, MEMF_ANY | MEMF_CLEAR);
+//  CopyMem(src->command_name, dst->command_name, command_name_sz);
+//}
+
+void FreeIPPCRequest(struct IPPCRequest* request) {
   ULONG command_name_sz;
-
-  command_name_sz = (ULONG) strlen((const char*) src->command_name) + 1;
-  dst->payload_sz = src->payload_sz;
-  dst->response_port = src->response_port;
-  dst->payload = AllocMem(src->payload_sz, MEMF_ANY | MEMF_CLEAR);
-  CopyMem(src->payload, dst->payload, src->payload_sz);
-  dst->command_name = AllocMem(command_name_sz, MEMF_ANY | MEMF_CLEAR);
-  CopyMem(src->command_name, dst->command_name, command_name_sz);
-}
-
-void FreeRPCRequest(struct IPPCRequest* request) {
-  ULONG command_name_sz;
-
   command_name_sz = (ULONG) strlen((const char*) request->command_name) + 1;
 
-  FreeMem(request->payload, request->payload_sz);
-  request->payload_sz = 0;
-  FreeMem(request->command_name, command_name_sz);
+  #ifdef ENABLE_KPRINT
+  KPrintF("in FreeIPPCRequest\n");
+  #endif
+
+//  if(request->response_port != NULL) {
+//    if(GetMsg(request->response_port)) {
+//#ifdef ENABLE_KPRINT
+//      KPrintF("We had another message!!!!\n");
+//#endif
+//    }
+//#ifdef ENABLE_KPRINT
+//    KPrintF("going to DeleteMsgPort\n");
+//#endif
+//    DeleteMsgPort(request->response_port);
+//  }
+
+  if(request->payload && request->payload_sz > 0) {
+    #ifdef ENABLE_KPRINT
+    KPrintF("going to FreeMem on payload\n");
+    #endif
+    FreeMem(request->payload, request->payload_sz);
+    request->payload_sz = 0;
+  } else {
+    #ifdef ENABLE_KPRINT
+    KPrintF("Payload empty, will not FreeMem\n");
+    #endif
+
+  }
+//  if(request->command_name && command_name_sz > 0) {
+//#ifdef ENABLE_KPRINT
+//    KPrintF("going to FreeMem on command_name, size: %ld\n", command_name_sz);
+//#endif
+//    FreeMem(request->command_name, command_name_sz);
+//  }
 }
 
-void FreeRPCResponse(struct IPPCResponse* response) {
-  FreeMem(response->data, response->length);
-  response->length = 0;
-}
+//void FreeRPCResponse(struct IPPCResponse* response) {
+//  FreeMem(response->data, response->length);
+//  response->length = 0;
+//}

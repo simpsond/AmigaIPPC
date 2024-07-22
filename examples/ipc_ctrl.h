@@ -5,8 +5,5 @@
 #ifndef AMIGAIPCDEMO_SRC_IPC_H_
 #define AMIGAIPCDEMO_SRC_IPC_H_
 
-#include <exec/ports.h>
-
-
 
 #endif //AMIGAIPCDEMO_SRC_IPC_H_

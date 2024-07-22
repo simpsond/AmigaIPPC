@@ -12,6 +12,9 @@ add_executable(ipc_srvc
     examples/ipc_srvc.c
     src/ippc.c
 )
+
+target_compile_options(ipc_srvc PUBLIC -DENABLE_KPRINT)
+
 target_include_directories(ipc_ctrl PUBLIC src)
 target_include_directories(ipc_srvc PUBLIC src)
 target_link_options(ipc_ctrl PUBLIC)
@@ -21,6 +24,6 @@ target_link_options(ipc_srvc PUBLIC -nostartfiles)
 target_link_libraries(ipc_srvc PUBLIC 'debug')
 
 install(TARGETS ipc_srvc ipc_ctrl DESTINATION ./)
-install(DIRECTORY src DESTINATION ./)
+install(DIRECTORY src examples DESTINATION ./)
 
 

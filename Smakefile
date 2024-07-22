@@ -7,26 +7,32 @@
 #
 #
 
-TRG= build/ipc_ctrl
 CC=	sc ResOpt NoStackCheck NoChkAbort
 RM= delete
 
-CFLAGS= Opt OptSize OptInl OptInLocal PARMS=REGISTER ObjectName=build/
-LDLAGS=	Link NoStdIO NoStartUp Batch
+# CFLAGS= debug=symbolflush Opt OptSize OptInl OptInLocal PARMS=REGISTER ObjectName=build/ IncludeDirectory=src/
+# CFLAGS= Define=ENABLE_KPRINT debug=symbolflush ObjectName=build/ IncludeDirectory=src/
+CFLAGS=ObjectName=build/ IncludeDirectory=src/
+# LDLAGS=	Link NoStartUp Batch
+# LDLAGS=	Link lib:debug.lib
+LDLAGS=	Link
 
 all: build/ipc_ctrl build/ipc_srvc
 
-build/ipc_ctrl.o: src/ipc_ctrl.c
+build/ipc_ctrl.o: examples/ipc_ctrl.c
    $(CC) $(CFLAGS) $<
 
-build/ipc_srvc.o: src/ipc_srvc.c
+build/ipc_srvc.o: examples/ipc_srvc.c
    $(CC) $(CFLAGS) $<
 
-build/ipc_ctrl:	build/ipc_ctrl.o
-    $(CC) $(LDLAGS) TO=$@ build/ipc_ctrl.o
+build/ippc.o: src/ippc.c
+   $(CC) $(CFLAGS) $<
 
-build/ipc_srvc:	build/ipc_srvc.o
-    $(CC) $(LDLAGS) TO=$@ build/ipc_srvc.o
+build/ipc_ctrl:	build/ipc_ctrl.o build/ippc.o
+    $(CC) $(LDLAGS) TO=$@ build/ipc_ctrl.o build/ippc.o
+
+build/ipc_srvc:	build/ipc_srvc.o build/ippc.o
+    $(CC) $(LDLAGS) NoStartUp TO=$@ build/ipc_srvc.o build/ippc.o
 
 clean:
     -$(RM) build/\#?
