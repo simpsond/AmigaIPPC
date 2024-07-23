@@ -95,15 +95,12 @@ void CallPortRPC(struct MsgPort* port, struct IPPCRequest* cmd, void(*cb)(struct
   cmd_response = (struct CommandResponse*)GetMsg(cmd->response_port);
   packet_len = cmd_response->response->length;
 
+  cb(cmd_response);
+  ReplyMsg((struct Message*)cmd_response);
+
   if(packet_len > 0) {
-    cb(cmd_response);
-    ReplyMsg((struct Message*)cmd_response);
     goto GetChunk;
-  } else {
-    cb(cmd_response);
-    ReplyMsg((struct Message*)cmd_response);
   }
-//  DeleteMsgPort(cmd->response_port);
 }
 
 void OnCommandCB(struct IPPCRequest* request, struct IPPCResponse* response) {
