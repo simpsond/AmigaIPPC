@@ -11,11 +11,11 @@ CC=	sc ResOpt NoStackCheck NoChkAbort
 RM= delete
 
 # CFLAGS= debug=symbolflush Opt OptSize OptInl OptInLocal PARMS=REGISTER ObjectName=build/ IncludeDirectory=src/
-# CFLAGS= Define=ENABLE_KPRINT debug=symbolflush ObjectName=build/ IncludeDirectory=src/
-CFLAGS=ObjectName=build/ IncludeDirectory=src/
+CFLAGS= Define=ENABLE_KPRINT debug=symbolflush ObjectName=build/ IncludeDirectory=src/
+# CFLAGS=ObjectName=build/ IncludeDirectory=src/
 # LDLAGS=	Link NoStartUp Batch
-# LDLAGS=	Link lib:debug.lib
-LDLAGS=	Link
+ LDLAGS=	Link lib:debug.lib
+# LDLAGS=	Link
 
 all: build/ipc_ctrl build/ipc_srvc
 

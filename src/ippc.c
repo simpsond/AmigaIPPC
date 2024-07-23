@@ -103,7 +103,7 @@ void CallPortRPC(struct MsgPort* port, struct IPPCRequest* cmd, void(*cb)(struct
     cb(cmd_response);
     ReplyMsg((struct Message*)cmd_response);
   }
-  DeleteMsgPort(cmd->response_port);
+//  DeleteMsgPort(cmd->response_port);
 }
 
 void OnCommandCB(struct IPPCRequest* request, struct IPPCResponse* response) {
@@ -144,17 +144,18 @@ void FreeIPPCRequest(struct IPPCRequest* request) {
   KPrintF("in FreeIPPCRequest\n");
   #endif
 
-//  if(request->response_port != NULL) {
-//    if(GetMsg(request->response_port)) {
-//#ifdef ENABLE_KPRINT
-//      KPrintF("We had another message!!!!\n");
-//#endif
-//    }
-//#ifdef ENABLE_KPRINT
-//    KPrintF("going to DeleteMsgPort\n");
-//#endif
-//    DeleteMsgPort(request->response_port);
+//  Forbid(); // We can't risk a getting another message while trying to delete the message port
+//  while(GetMsg(request->response_port)) { // Throw away any messages still waiting
+//    #ifdef ENABLE_KPRINT
+//    KPrintF("We had another message!!!!\n");
+//    #endif
 //  }
+
+#ifdef ENABLE_KPRINT
+    KPrintF("going to DeleteMsgPort\n");
+#endif
+    DeleteMsgPort(request->response_port);
+//  Permit();
 
   if(request->payload && request->payload_sz > 0) {
     #ifdef ENABLE_KPRINT
@@ -168,11 +169,11 @@ void FreeIPPCRequest(struct IPPCRequest* request) {
     #endif
 
   }
-//  if(request->command_name && command_name_sz > 0) {
-//#ifdef ENABLE_KPRINT
-//    KPrintF("going to FreeMem on command_name, size: %ld\n", command_name_sz);
-//#endif
-//    FreeMem(request->command_name, command_name_sz);
-//  }
+  if(request->command_name && command_name_sz > 0) {
+    #ifdef ENABLE_KPRINT
+    KPrintF("going to FreeMem on command_name, size: %ld\n", command_name_sz);
+    #endif
+    FreeMem(request->command_name, command_name_sz);
+  }
 }
 

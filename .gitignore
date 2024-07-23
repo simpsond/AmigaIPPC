@@ -1,2 +1,5 @@
 .idea
+*.uaem
+*.info
+*.info.uaem
 cmake*
