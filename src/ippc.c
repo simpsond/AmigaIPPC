@@ -77,12 +77,10 @@ void CallTaskRPC(struct Process* proc, struct IPPCRequest* cmd, void(*cb)(struct
 
 void CallPortRPC(struct MsgPort* port, struct IPPCRequest* cmd, void(*cb)(struct CommandResponse* data)) {
   struct RequestMessage message;
-  struct CommandResponse* cmd_response;
   ULONG packet_len;
 
   message.msg.mn_ReplyPort = CreateMsgPort();
   message.msg.mn_Length = sizeof(struct RequestMessage);
-
   message.request = cmd;
 
   PutMsg(port, (struct Message*) &message);
@@ -90,17 +88,16 @@ void CallPortRPC(struct MsgPort* port, struct IPPCRequest* cmd, void(*cb)(struct
   GetMsg(message.msg.mn_ReplyPort);
   DeleteMsgPort(message.msg.mn_ReplyPort);
 
-  GetChunk:
-  WaitPort(cmd->response_port);
-  cmd_response = (struct CommandResponse*)GetMsg(cmd->response_port);
-  packet_len = cmd_response->response->length;
+  do {
+    struct CommandResponse* cmd_response;
 
-  cb(cmd_response);
-  ReplyMsg((struct Message*)cmd_response);
+    WaitPort(cmd->response_port);
+    cmd_response = (struct CommandResponse *) GetMsg(cmd->response_port);
+    packet_len = cmd_response->response->length;
 
-  if(packet_len > 0) {
-    goto GetChunk;
-  }
+    cb(cmd_response);
+    ReplyMsg((struct Message *) cmd_response);
+  } while(packet_len > 0);
 }
 
 void OnCommandCB(struct IPPCRequest* request, struct IPPCResponse* response) {
