@@ -35,4 +35,4 @@ build/ipc_srvc:	build/ipc_srvc.o build/ippc.o
     $(CC) $(LDLAGS) NoStartUp TO=$@ build/ipc_srvc.o build/ippc.o
 
 clean:
-    -$(RM) build/\#?
+    -$(RM) build/~(.gitignore)
