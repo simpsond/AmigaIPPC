@@ -17,12 +17,15 @@ CFLAGS= Define=ENABLE_KPRINT debug=symbolflush ObjectName=build/ IncludeDirector
  LDLAGS=	Link lib:debug.lib
 # LDLAGS=	Link
 
-all: build/ipc_ctrl build/ipc_srvc
+all: build/ipc_ctrl build/ipc_srvc build/ping-pong
 
 build/ipc_ctrl.o: examples/ipc_ctrl.c
    $(CC) $(CFLAGS) $<
 
 build/ipc_srvc.o: examples/ipc_srvc.c
+   $(CC) $(CFLAGS) $<
+
+build/ping-pong.o: examples/ping-pong.c
    $(CC) $(CFLAGS) $<
 
 build/ippc.o: src/ippc.c
@@ -33,6 +36,9 @@ build/ipc_ctrl:	build/ipc_ctrl.o build/ippc.o
 
 build/ipc_srvc:	build/ipc_srvc.o build/ippc.o
     $(CC) $(LDLAGS) NoStartUp TO=$@ build/ipc_srvc.o build/ippc.o
+
+build/ping-pong:	build/ping-pong.o build/ippc.o
+    $(CC) $(LDLAGS) TO=$@ build/ping-pong.o build/ippc.o
 
 clean:
     -$(RM) build/~(.gitignore)

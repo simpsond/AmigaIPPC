@@ -25,3 +25,19 @@ makedir build
 smake
 ```
 example binaries will be in the build directory.
+
+## Usage
+Just include `src/ippc.h` and compile in `src/ippc.c`
+### Client/Calling side
+1. Use `CreateIPPCRequest` to create a request
+2. Make the request with `CallTaskRPC`
+3. Free resources created with `FreeIPPCRequest`
+
+**Example**
+```
+struct IPPCRequest* request;
+
+request = CreateIPPCRequest(command_name, (void*)&count_random_numbers, sizeof(USHORT));
+CallTaskRPC((struct Process*)task, request, GetRandomCB);
+FreeIPPCRequest(request);
+```
