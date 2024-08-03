@@ -22,6 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
 
+/**
+ * @file ippc.c
+ * @author Dustin Simpson
+ * @date 28 July 2024
+ * @brief File contains functionality for Inter-Process Procedure Calls
+ */
+
+
 #include "ippc.h"
 
 #include <proto/exec.h>

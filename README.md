@@ -33,11 +33,7 @@ Just include `src/ippc.h` and compile in `src/ippc.c`
 2. Make the request with `CallTaskRPC`
 3. Free resources created with `FreeIPPCRequest`
 
-**Example**
-```
-struct IPPCRequest* request;
+### Server side
+1. Use `RPCGetCommand` to check a message port and execute a callback if a message exists
 
-request = CreateIPPCRequest(command_name, (void*)&count_random_numbers, sizeof(USHORT));
-CallTaskRPC((struct Process*)task, request, GetRandomCB);
-FreeIPPCRequest(request);
-```
+See `ping-pong.c` in the examples directory is a simple example for a well documented example.

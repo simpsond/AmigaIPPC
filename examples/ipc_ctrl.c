@@ -28,6 +28,7 @@ void StartSrvc(void);
 void StopSrvc(void);
 void SrvcStatus(void);
 void SrvcGetRandom(void);
+void SrvcAddNumbers();
 int IsSrvcRunning(struct Task** task);
 
 
@@ -43,6 +44,7 @@ int main() {
       {(STRPTR)"stop", StopSrvc},
       {(STRPTR)"status", SrvcStatus},
       {(STRPTR)"get_random", SrvcGetRandom},
+      {(STRPTR)"add_ushorts", SrvcAddNumbers},
   };
   UBYTE command_count = sizeof(commands)/sizeof(commands[0]);
 
@@ -132,6 +134,21 @@ void SrvcGetRandom() {
 
   if(IsSrvcRunning(&task)) {
     request = CreateIPPCRequest(command_name, (void*)&count_random_numbers, sizeof(USHORT));
+    Printf("going to call: CallTaskRPC\n");
+    CallTaskRPC((struct Process*)task, request, GetRandomCB);
+    FreeIPPCRequest(request);
+  }
+}
+
+void SrvcAddNumbers() {
+  struct IPPCRequest* request;
+  struct Task* task;
+
+  USHORT numbers[] = {1, 2};
+
+
+  if(IsSrvcRunning(&task)) {
+    request = CreateIPPCRequest("add_ushorts", (void*)numbers, sizeof(USHORT) * 2);
     Printf("going to call: CallTaskRPC\n");
     CallTaskRPC((struct Process*)task, request, GetRandomCB);
     FreeIPPCRequest(request);
