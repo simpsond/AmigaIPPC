@@ -112,13 +112,16 @@ int main(void) {
     return -1;
   }
 
+  // Create a request handle, this just has a name but no additional payload
   request = CreateIPPCRequest(ping_str, NULL, 0);
 
   Printf("Going to CallTaskRPC\n");
+  // Send the request to the process `pong_process`. The `PingCB` function will handle the reply
   CallTaskRPC(pong_process, request, PingCB);
-  FreeIPPCRequest(request);
 
-  Signal((struct Task*)pong_process, 1 << quit_sig);
-  Wait(1 << main_sig);
+  FreeIPPCRequest(request); // Free resources allocated by CreateIPPCRequest
+
+  Signal((struct Task*)pong_process, 1 << quit_sig); // Tell `pong_process` to shut down
+  Wait(1 << main_sig); // Wait for `pong_process` to signal back it is wrapping things up
   return 0;
 }

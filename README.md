@@ -36,4 +36,4 @@ Just include `src/ippc.h` and compile in `src/ippc.c`
 ### Server side
 1. Use `RPCGetCommand` to check a message port and execute a callback if a message exists
 
-See `ping-pong.c` in the examples directory is a simple example for a well documented example.
+See `ping-pong.c` in the examples directory for a well documented example.
