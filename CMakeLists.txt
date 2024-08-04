@@ -18,6 +18,10 @@ add_executable(ping_pong
     src/ippc.c
 )
 
+add_library(AmigaIPPC INTERFACE)
+target_sources(AmigaIPPC INTERFACE src/ippc.c)
+target_include_directories(AmigaIPPC INTERFACE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+
 target_compile_options(ipc_srvc PUBLIC -DENABLE_KPRINT)
 
 target_include_directories(ipc_ctrl PUBLIC src)
